@@ -1,125 +1,126 @@
-# AWS Three-Tier Architecture with Terraform & CI/CD
+# Serverless URL Shortener with AWS, Terraform & GitHub Actions
 
 ## Project Overview
 
-This project demonstrates the deployment of a highly available AWS Three-Tier Architecture using Terraform Infrastructure as Code (IaC). The environment consists of a public-facing Application Load Balancer (ALB), EC2 application server, private networking components, and an Amazon RDS database.
+This project demonstrates the deployment of a serverless URL shortener using AWS cloud services, Terraform Infrastructure as Code (IaC), Git version control, and GitHub Actions CI/CD pipelines.
 
-The project was developed to strengthen practical cloud engineering, networking, Terraform, and DevOps skills while simulating real-world infrastructure deployment workflows.
+The goal of the project is to create a scalable, low-cost, serverless application that can store and retrieve shortened URLs without managing traditional servers.
 
 ---
 
 ## Architecture
 
-User → Application Load Balancer (ALB) → EC2 Application Server → Amazon RDS Database
+```text
+User
+ ↓
+API Gateway
+ ↓
+AWS Lambda
+ ↓
+Amazon DynamoDB
+```
 
-### Components
+### AWS Services Used
 
-* Amazon VPC
-* Public and Private Subnets
-* Internet Gateway
-* NAT Gateway
-* Route Tables and Associations
-* Security Groups
-* EC2 Instance
-* Application Load Balancer
-* Target Group
-* Amazon RDS
+* Amazon API Gateway
+* AWS Lambda
+* Amazon DynamoDB
+* IAM Roles & Policies
 * Terraform
 * Git & GitHub
-* GitHub Actions (CI/CD)
+* GitHub Actions
 
 ---
 
-## Objectives
+## Project Objectives
 
-* Build cloud infrastructure using Infrastructure as Code (Terraform)
-* Deploy a secure three-tier architecture in AWS
-* Understand public vs. private networking
-* Configure routing and internet connectivity
+* Learn serverless application architecture
+* Deploy AWS resources using Terraform
+* Understand API Gateway and Lambda integrations
+* Use DynamoDB as a NoSQL database
 * Implement Git version control
-* Simulate enterprise CI/CD workflows using GitHub Actions
-* Troubleshoot and resolve infrastructure deployment issues
+* Build a CI/CD pipeline with GitHub Actions
+* Simulate enterprise cloud engineering workflows
 
 ---
 
-## Key Challenges & Troubleshooting
+## Why Serverless?
 
-During deployment several issues were identified and resolved:
+Traditional applications require:
 
-### Missing Internet Gateway Route
+* EC2 Instances
+* Operating System Management
+* Patching
+* Scaling Configuration
+* Capacity Planning
 
-Issue:
+This project uses serverless services, allowing AWS to manage the underlying infrastructure automatically.
 
-* Application Load Balancer was inaccessible from the internet.
+Benefits include:
 
-Root Cause:
-
-* Public route table did not contain a route to the Internet Gateway.
-
-Resolution:
-
-* Added Internet Gateway resource and associated route table entry:
-
-  * 0.0.0.0/0 → Internet Gateway
-
----
-
-### Missing Route Table Associations
-
-Issue:
-
-* Subnets were not properly associated with route tables.
-
-Resolution:
-
-* Created and verified route table associations for both public and private subnets.
+* Lower operational overhead
+* Automatic scaling
+* Pay-per-use pricing
+* Reduced infrastructure management
 
 ---
 
-### Missing Target Group Registration
+## Application Workflow
 
-Issue:
+### Create Short URL
 
-* Load Balancer returned errors because no healthy targets were available.
+1. User submits a long URL.
+2. API Gateway receives the request.
+3. Lambda generates a short code.
+4. DynamoDB stores:
 
-Resolution:
+```text
+abc123 → https://www.example.com
+```
 
-* Created and attached a Target Group to the Application Load Balancer.
-* Registered EC2 instance as a target.
-
----
-
-### 504 Gateway Timeout
-
-Issue:
-
-* ALB returned a 504 Gateway Timeout.
-
-Root Cause:
-
-* Application service was not running on the EC2 instance.
-
-Resolution:
-
-* Connected to EC2 and verified application configuration and service availability.
+5. Response returns the shortened URL.
 
 ---
 
-### EC2 Key Pair Errors
+### Retrieve URL
 
-Issue:
+1. User accesses:
 
-* Terraform deployment failed because the specified key pair did not exist.
+```text
+https://myapp.com/abc123
+```
 
-Resolution:
-
-* Created and referenced the correct AWS key pair within Terraform.
+2. API Gateway invokes Lambda.
+3. Lambda queries DynamoDB.
+4. Original URL is returned.
+5. User is redirected.
 
 ---
 
-## CI/CD Implementation
+## Why DynamoDB?
 
-To simulate a real enterprise deployment workflow, GitHub Actions was implemented.
+DynamoDB was selected because the application requires extremely fast key-value lookups.
+
+Example:
+
+```text
+Key: abc123
+Value: https://www.example.com
+```
+
+Benefits:
+
+* Serverless database
+* Millisecond response times
+* Automatic scaling
+* No database server management
+* Highly available by default
+
+---
+
+## CI/CD Pipeline
+
+GitHub Actions was implemented to automate infrastructure validation before deployment.
 
 ### Pipeline Tasks
 
@@ -127,14 +128,23 @@ To simulate a real enterprise deployment workflow, GitHub Actions was implemente
 * Terraform Format Check
 * Terraform Validate
 
-This allows infrastructure code to be automatically reviewed whenever code is pushed to GitHub or submitted through a pull request.
+### Workflow
 
-### Workflow Benefits
+Developer writes Terraform code
+↓
+Git Commit
+↓
+Git Push
+↓
+GitHub Actions Runs
+↓
+Terraform Validation
+↓
+Pull Request Review
+↓
+Deployment Approval
 
-* Detects syntax issues before deployment
-* Validates Terraform configuration automatically
-* Encourages peer review and version control practices
-* Simulates real-world DevOps workflows
+This workflow mirrors modern cloud engineering and DevOps practices.
 
 ---
 
@@ -142,19 +152,16 @@ This allows infrastructure code to be automatically reviewed whenever code is pu
 
 ### Cloud Engineering
 
-* AWS Networking
-* VPC Design
-* Load Balancing
-* RDS Deployment
-* Security Groups
-* Route Tables
-* Internet Gateways
-* NAT Gateways
+* AWS Serverless Architecture
+* API Gateway
+* AWS Lambda
+* DynamoDB
+* IAM
 
 ### Infrastructure as Code
 
 * Terraform
-* Resource Dependencies
+* Resource Management
 * Infrastructure Automation
 
 ### DevOps
@@ -165,31 +172,31 @@ This allows infrastructure code to be automatically reviewed whenever code is pu
 * GitHub Actions
 * CI/CD Pipelines
 
-### Troubleshooting
+### Architecture
 
-* Network Connectivity
-* Routing Issues
-* Load Balancer Configuration
-* EC2 Connectivity
-* Infrastructure Validation
+* Serverless Design
+* API Integration
+* Event-Driven Computing
+* NoSQL Database Design
 
 ---
 
-## Lessons Learned
+## Key Lessons Learned
 
-This project reinforced the importance of troubleshooting, infrastructure validation, and understanding how AWS networking components work together. Building the environment from scratch provided hands-on experience with real deployment issues that cloud engineers commonly encounter in production environments.
+This project provided hands-on experience designing and deploying a serverless architecture using AWS services. It reinforced the importance of Infrastructure as Code, version control, automated validation, and cloud-native application design.
 
-Rather than simply deploying resources, this project emphasized reading Terraform output, debugging failures, validating configurations, and implementing CI/CD processes that mirror modern cloud engineering practices.
+By combining Terraform and GitHub Actions, the project simulates how cloud engineers build, validate, review, and deploy infrastructure in modern enterprise environments.
 
 ---
 
 ## Future Enhancements
 
-* Auto Scaling Group
-* Multi-AZ Application Tier
-* Remote Terraform State (S3 + DynamoDB)
+* Custom Domain Name
 * CloudWatch Monitoring
-* AWS WAF
-* Terraform Modules
-* Automated Terraform Plan & Apply Workflow
-* Blue/Green Deployment Strategy
+* Route 53 Integration
+* HTTPS with ACM
+* Lambda Environment Variables
+* Terraform Remote State (S3 + DynamoDB)
+* Automated Terraform Plan & Apply
+* URL Analytics Dashboard
+* User Authentication with Amazon Cognito
