@@ -1,20 +1,23 @@
 resource "aws_dynamodb_table" "url_table" {
-  name         = "url-shortner"
+  name         = "url-shortener-table"
   billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "short_code"
 
-  hash_key = "short_code"
   attribute {
     name = "short_code"
     type = "S"
   }
+
   tags = {
-    environment = "dev"
-    project     = "serverless-URL-Shortner"
+    Name        = "url-shortener-table"
+    Environment = "Dev"
+    Project     = "ServerlessURLShortener"
+    ManagedBy   = "Terraform"
   }
 }
 
-resource "aws_iam_role" "lamda_role" {
-  name = "url-shortner-lamda-role"
+resource "aws_iam_role" "lambda_role" {
+  name = "url-shortener-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -28,69 +31,85 @@ resource "aws_iam_role" "lamda_role" {
       }
     ]
   })
-
 }
 
-resource "aws_iam_role_policy_attachment" "lamda_basic" {
-  role = aws_iam_role.lamda_role.name
+resource "aws_iam_policy" "lambda_policy" {
+  name = "url-shortener-lambda-policy"
 
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-
-
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem"
+        ]
+        Resource = aws_dynamodb_table.url_table.arn
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
 }
 
-resource "aws_lambda_function" "url-shortener" {
-  function_name = "url-shortner"
+resource "aws_iam_role_policy_attachment" "lambda_attach" {
+  role       = aws_iam_role.lambda_role.name
+  policy_arn = aws_iam_policy.lambda_policy.arn
+}
 
-  filename         = "lamda/function.zip"
-  source_code_hash = filebase64sha256("lamda/function.zip")
-  role             = aws_iam_role.lamda_role.arn
-  handler          = "index.lambda_handler"
-  runtime          = "python3.12"
+resource "aws_lambda_function" "url_shortener" {
+  function_name = "url-shortener-function"
+  role          = aws_iam_role.lambda_role.arn
+  handler       = "lamda_function.lambda_handler"
+  runtime       = "python3.12"
 
-  tags = {
-    environment = "dev"
+  filename         = data.archive_file.lambda_zip.output_path
+  source_code_hash = data.archive_file.lambda_zip.output_base64sha256
+
+  environment {
+    variables = {
+      TABLE_NAME = aws_dynamodb_table.url_table.name
+    }
   }
 }
 
 resource "aws_apigatewayv2_api" "url_api" {
-  name          = "url-shortner-api"
+  name          = "url-shortener-api"
   protocol_type = "HTTP"
-
-
 }
 
-resource "aws_apigatewayv2_integration" "lamda_integration" {
-  api_id = aws_apigatewayv2_api.url_api.id
-
+resource "aws_apigatewayv2_integration" "lambda_integration" {
+  api_id                 = aws_apigatewayv2_api.url_api.id
   integration_type       = "AWS_PROXY"
-  integration_uri        = "aws_lamda_function.url_shortner.invoke_arn"
+  integration_uri        = aws_lambda_function.url_shortener.invoke_arn
+  integration_method     = "POST"
   payload_format_version = "2.0"
-
 }
 
-resource "aws_apigatewayv2_route" "shorten_route" {
-  api_id = aws_apigatewayv2_api.url_api.id
-
-  route_key = "GET /"
-  target    = "integration/${aws_apigatewayv2_integration.lamda_integration.id}"
-
+resource "aws_apigatewayv2_route" "create_url" {
+  api_id    = aws_apigatewayv2_api.url_api.id
+  route_key = "POST /shorten"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
 resource "aws_apigatewayv2_stage" "dev" {
-  api_id = aws_apigatewayv2_api.url_api.id
-
-  name        = "$default"
+  api_id      = aws_apigatewayv2_api.url_api.id
+  name        = "dev"
   auto_deploy = true
-
 }
+
 resource "aws_lambda_permission" "api_gateway" {
-  statement_id = "AllowAPIGatewayInvoke"
-
+  statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.url-shortener.function_name
-
-  principal = "apigateway.amazonaws.com"
-
+  function_name = aws_lambda_function.url_shortener.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.url_api.execution_arn}/*/*"
 }
-
